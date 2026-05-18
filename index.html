@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<title>Projection de rentabilité — Sébastien</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Helvetica Neue',Arial,sans-serif; background:#fff; padding:36px 48px; color:#062e28; }
+
+h1 { font-size:28px; font-weight:900; color:#062e28; line-height:1.2; margin-bottom:6px; }
+h1 span { color:#0a6e5c; }
+.subtitle { font-size:13px; color:#666; line-height:1.6; max-width:480px; margin-bottom:28px; }
+
+/* KPI */
+.kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:24px; }
+.kpi { background:#f4fbf8; border:1.5px solid #e0f0ea; border-radius:14px; padding:16px 20px; position:relative; overflow:hidden; }
+.kpi.etf { border-color:#0a6e5c; }
+.kpi .kl { font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#0a6e5c; margin-bottom:8px; }
+.kpi .kv { font-size:20px; font-weight:900; color:#062e28; }
+.kpi .ks { font-size:11px; color:#888; margin-top:4px; }
+.kpi .deco { position:absolute; right:-8px; bottom:-8px; width:48px; height:48px; border-radius:50%; background:#8dd4c4; opacity:.18; }
+
+/* SLIDER */
+.slider-box { background:#f8fdfb; border:1.5px solid #e0f0ea; border-radius:14px; padding:18px 24px; margin-bottom:24px; display:flex; align-items:center; gap:20px; }
+.slider-label { flex-shrink:0; }
+.slider-label .sl { font-size:13px; font-weight:700; color:#062e28; }
+.slider-label .ss { font-size:11px; color:#888; margin-top:2px; }
+.slider-track { flex:1; }
+input[type=range] { width:100%; -webkit-appearance:none; appearance:none; height:4px; background:linear-gradient(to right,#0a6e5c,#12b090); border-radius:2px; outline:none; cursor:pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#0a6e5c; border:3px solid white; box-shadow:0 0 0 2px #0a6e5c; cursor:pointer; }
+.slider-val { width:48px; height:48px; background:#0a6e5c; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:white; flex-shrink:0; }
+.slider-unit { font-size:11px; color:#888; flex-shrink:0; }
+
+/* CHART */
+.chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.chart-label { font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#999; }
+.chart-legend { display:flex; gap:16px; }
+.cl-item { display:flex; align-items:center; gap:6px; font-size:11px; color:#666; font-weight:500; }
+.cl-dot { width:10px; height:10px; border-radius:2px; }
+
+.chart-wrap { position:relative; height:260px; margin-bottom:24px; }
+canvas { width:100%; height:100%; }
+.tooltip-box { position:absolute; background:#062e28; color:white; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:500; pointer-events:none; opacity:0; transition:opacity .1s; white-space:nowrap; z-index:10; line-height:1.6; }
+
+/* RÉSULTATS BAS */
+.result-row { display:grid; grid-template-columns:1fr 1.4fr 1fr 1fr; gap:12px; margin-bottom:24px; }
+.res-card { border-radius:14px; padding:20px 24px; }
+.res-investi { background:#f4fbf8; border:1.5px solid #e0f0ea; }
+.res-projete { background:linear-gradient(135deg,#062e28,#0a6e5c); position:relative; overflow:hidden; }
+.res-gain { background:#f4fbf8; border:1.5px solid #e0f0ea; }
+.res-etf { background:#f4fbf8; border:1.5px solid #0a6e5c; }
+.res-label { font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#0a6e5c; margin-bottom:8px; }
+.res-projete .res-label { color:#8dd4c4; }
+.res-val { font-size:26px; font-weight:900; color:#062e28; }
+.res-projete .res-val { color:white; }
+.res-gain .res-val { color:#0a6e5c; }
+.res-etf .res-val { color:#0a6e5c; }
+.res-sub { font-size:11px; color:#888; margin-top:4px; }
+.res-projete .res-sub { color:rgba(255,255,255,.65); }
+.res-deco { position:absolute; right:-12px; top:-12px; width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,.1); }
+</style>
+</head>
+<body>
+
+<h1>Projection de rentabilité de<br><span>votre stratégie patrimoniale</span></h1>
+<p class="subtitle">Cette projection illustre le potentiel de valorisation de votre stratégie patrimoniale dans le temps, sur la base des hypothèses retenues. Elle tient compte des effets des intérêts composés propres à chaque enveloppe d'investissement, ainsi que de l'épargne mensuelle ETF.</p>
+
+<!-- KPI -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kl">Capital initial</div>
+    <div class="kv">70 000 €</div>
+    <div class="ks">Investissement de départ</div>
+    <div class="deco"></div>
+  </div>
+  <div class="kpi">
+    <div class="kl">Fonds euros</div>
+    <div class="kv">10 000 €</div>
+    <div class="ks">Court terme · 5,3% / an</div>
+    <div class="deco"></div>
+  </div>
+  <div class="kpi">
+    <div class="kl">PS Rendement Actions Souveraineté Juin 2026</div>
+    <div class="kv">40 000 €</div>
+    <div class="ks">Moyen terme · 9,5% / an</div>
+    <div class="deco"></div>
+  </div>
+  <div class="kpi">
+    <div class="kl">PS Rendement Taux Quotidien 2026</div>
+    <div class="kv">20 000 €</div>
+    <div class="ks">Moyen terme · 7% / an</div>
+    <div class="deco"></div>
+  </div>
+  <div class="kpi etf">
+    <div class="kl">Épargne mensuelle ETF</div>
+    <div class="kv">300 €/mois</div>
+    <div class="ks">Versement continu · 8% / an</div>
+    <div class="deco"></div>
+  </div>
+</div>
+
+<!-- SLIDER -->
+<div class="slider-box">
+  <div class="slider-label">
+    <div class="sl">Horizon de projection</div>
+    <div class="ss">Faites glisser pour choisir la durée</div>
+  </div>
+  <div class="slider-track">
+    <input type="range" id="slider" min="1" max="20" value="10" oninput="update()"/>
+  </div>
+  <div class="slider-val" id="sliderVal">10</div>
+  <div class="slider-unit">ans</div>
+</div>
+
+<!-- CHART -->
+<div class="chart-header">
+  <span class="chart-label">Évolution du capital dans le temps</span>
+  <div class="chart-legend">
+    <div class="cl-item"><div class="cl-dot" style="background:#0a6e5c"></div>Capital projeté total</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#12b090;opacity:.7"></div>dont ETF mensuel</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#c8ede4;border:1px dashed #0a6e5c"></div>Capital investi</div>
+  </div>
+</div>
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+  <div class="tooltip-box" id="tt"></div>
+</div>
+
+<!-- RÉSULTATS -->
+<div class="result-row">
+  <div class="res-card res-investi">
+    <div class="res-label">Capital investi</div>
+    <div class="res-val" id="investiVal">70 000 €</div>
+    <div class="res-sub" id="investiSub">Capital initial · aucun versement</div>
+  </div>
+  <div class="res-card res-projete">
+    <div class="res-deco"></div>
+    <div class="res-label">Capital projeté</div>
+    <div class="res-val" id="resVal">—</div>
+    <div class="res-sub" id="resSub">—</div>
+  </div>
+  <div class="res-card res-gain">
+    <div class="res-label">Gain estimé</div>
+    <div class="res-val" id="gainVal">—</div>
+    <div class="res-sub" id="gainSub">—</div>
+  </div>
+  <div class="res-card res-etf">
+    <div class="res-label">dont ETF mensuel</div>
+    <div class="res-val" id="etfVal">—</div>
+    <div class="res-sub" id="etfSub">—</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var fe=10000, ar=40000, tq=20000;
+  var rfe=0.053, rar=0.095, rtq=0.07;
+  var total=70000;
+
+  // ETF mensuel
+  var etfMensuel=300;
+  var retfMensuel=0.08/12;
+
+  var canvas=document.getElementById("chart");
+  var ctx=canvas.getContext("2d");
+  var tt=document.getElementById("tt");
+
+  function fmt(v){ return Math.round(v).toLocaleString("fr-FR")+" \u20ac"; }
+  function fmtK(v){ return Math.round(v/1000)+"k\u20ac"; }
+
+  function projBase(y){
+    return fe*Math.pow(1+rfe,y)+ar*Math.pow(1+rar,y)+tq*Math.pow(1+rtq,y);
+  }
+
+  // Annuités avec intérêts composés mensuels
+  function projEtf(y){
+    var n=y*12;
+    if(n===0) return 0;
+    return etfMensuel*(Math.pow(1+retfMensuel,n)-1)/retfMensuel*(1+retfMensuel);
+  }
+
+  function projTotal(y){ return projBase(y)+projEtf(y); }
+  function capitalInvesti(y){ return total+etfMensuel*12*y; }
+
+  function buildPts(years){
+    var base=[],etf=[],combined=[];
+    for(var y=0;y<=years;y++){
+      base.push(projBase(y));
+      etf.push(projEtf(y));
+      combined.push(projBase(y)+projEtf(y));
+    }
+    return {base:base,etf:etf,combined:combined};
+  }
+
+  function draw(years){
+    var pts=buildPts(years);
+    var W=canvas.offsetWidth, H=canvas.offsetHeight;
+    canvas.width=W; canvas.height=H;
+
+    var pad={top:20,right:20,bottom:40,left:60};
+    var cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+
+    var maxV=pts.combined[years]*1.05;
+    var minV=total*0.95;
+
+    function px(y){ return pad.left+y*(cw/years); }
+    function py(v){ return pad.top+ch-(v-minV)/(maxV-minV)*ch; }
+
+    ctx.clearRect(0,0,W,H);
+
+    // Grille
+    var steps=5;
+    ctx.strokeStyle="#f0f0f0"; ctx.lineWidth=1;
+    for(var i=0;i<=steps;i++){
+      var v=minV+(maxV-minV)*i/steps;
+      var yy=py(v);
+      ctx.beginPath(); ctx.moveTo(pad.left,yy); ctx.lineTo(pad.left+cw,yy); ctx.stroke();
+      ctx.fillStyle="#bbb"; ctx.font="10px Helvetica,Arial"; ctx.textAlign="right";
+      ctx.fillText(fmtK(v),pad.left-6,yy+3);
+    }
+
+    // Axe X
+    ctx.fillStyle="#bbb"; ctx.font="10px Helvetica,Arial"; ctx.textAlign="center";
+    for(var y=0;y<=years;y++){
+      if(years<=10||y%2===0||y===years){
+        ctx.fillText(y===0?"Aujourd'hui":"An "+y,px(y),H-pad.bottom+16);
+      }
+    }
+
+    // Ligne capital investi (progressif)
+    ctx.strokeStyle="#8dd4c4"; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(px(0),py(capitalInvesti(0)));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(capitalInvesti(y)));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Zone ETF (au-dessus de la courbe de base)
+    var gradEtf=ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+    gradEtf.addColorStop(0,"rgba(18,176,144,0.22)");
+    gradEtf.addColorStop(1,"rgba(18,176,144,0.04)");
+    ctx.beginPath();
+    ctx.moveTo(px(0),py(pts.base[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.combined[y]));
+    ctx.lineTo(px(years),py(pts.base[years]));
+    for(var y=years;y>=0;y--) ctx.lineTo(px(y),py(pts.base[y]));
+    ctx.closePath();
+    ctx.fillStyle=gradEtf; ctx.fill();
+
+    // Zone base
+    var grad=ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+    grad.addColorStop(0,"rgba(10,110,92,0.18)");
+    grad.addColorStop(1,"rgba(10,110,92,0.01)");
+    ctx.beginPath();
+    ctx.moveTo(px(0),py(pts.base[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.base[y]));
+    ctx.lineTo(px(years),py(minV));
+    ctx.lineTo(px(0),py(minV));
+    ctx.closePath();
+    ctx.fillStyle=grad; ctx.fill();
+
+    // Courbe ETF (tirets)
+    ctx.strokeStyle="#12b090"; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath();
+    ctx.moveTo(px(0),py(pts.combined[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.combined[y]));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Courbe totale principale
+    ctx.strokeStyle="#0a6e5c"; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    ctx.moveTo(px(0),py(pts.combined[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.combined[y]));
+    ctx.stroke();
+
+    // Point final
+    ctx.beginPath();
+    ctx.arc(px(years),py(pts.combined[years]),5,0,Math.PI*2);
+    ctx.fillStyle="#0a6e5c"; ctx.fill();
+
+    // Mise à jour cartes résultats
+    var finalV=pts.combined[years];
+    var finalEtf=pts.etf[years];
+    var investi=capitalInvesti(years);
+    var gain=finalV-investi;
+    var pct=((gain/investi)*100).toFixed(1);
+
+    document.getElementById("investiVal").textContent=fmt(investi);
+    document.getElementById("investiSub").textContent="70 000 € + "+(etfMensuel*12*years).toLocaleString("fr-FR")+" € versés";
+    document.getElementById("resVal").textContent=fmt(finalV);
+    document.getElementById("resSub").textContent="Dans "+years+" an"+(years>1?"s":"");
+    document.getElementById("gainVal").textContent="+"+fmt(gain);
+    document.getElementById("gainSub").textContent="+"+pct+"% de performance estimée";
+    document.getElementById("etfVal").textContent=fmt(finalEtf);
+    document.getElementById("etfSub").textContent=fmt(etfMensuel*12*years)+" versés · rendement 8%/an";
+
+    // Hover
+    canvas.onmousemove=function(ev){
+      var rect=canvas.getBoundingClientRect();
+      var mx=ev.clientX-rect.left;
+      var raw=(mx-pad.left)/cw*years;
+      var yr=Math.round(Math.max(0,Math.min(years,raw)));
+      var vc=pts.combined[yr];
+      var ve=pts.etf[yr];
+      var inv=capitalInvesti(yr);
+      var g=vc-inv;
+      var p2=((g/inv)*100).toFixed(1);
+      tt.innerHTML=(yr===0?"Aujourd'hui":"<strong>An "+yr+"</strong>")
+        +"<br>Capital total : "+fmt(vc)
+        +"<br>dont ETF : +"+fmt(ve)
+        +"<br>Investi : "+fmt(inv)
+        +"<br>Gain : +"+(g>0?fmt(g):"0 €")+" (+"+p2+"%)";
+      var tx=ev.clientX-rect.left+16;
+      var ty=ev.clientY-rect.top-60;
+      if(tx+200>W) tx=ev.clientX-rect.left-210;
+      tt.style.left=tx+"px"; tt.style.top=ty+"px"; tt.style.opacity="1";
+      ctx.clearRect(0,0,W,H);
+      draw2(years,pts,pad,cw,ch,maxV,minV,W,H,yr,px,py);
+    };
+    canvas.onmouseleave=function(){ tt.style.opacity="0"; draw(years); };
+  }
+
+  function draw2(years,pts,pad,cw,ch,maxV,minV,W,H,hoverY,px,py){
+    var steps=5;
+    ctx.strokeStyle="#f0f0f0"; ctx.lineWidth=1;
+    for(var i=0;i<=steps;i++){
+      var v=minV+(maxV-minV)*i/steps;
+      var yy=py(v);
+      ctx.beginPath(); ctx.moveTo(pad.left,yy); ctx.lineTo(pad.left+cw,yy); ctx.stroke();
+      ctx.fillStyle="#bbb"; ctx.font="10px Helvetica,Arial"; ctx.textAlign="right";
+      ctx.fillText(Math.round(v/1000)+"k\u20ac",pad.left-6,yy+3);
+    }
+    ctx.fillStyle="#bbb"; ctx.font="10px Helvetica,Arial"; ctx.textAlign="center";
+    for(var y=0;y<=years;y++){
+      if(years<=10||y%2===0||y===years)
+        ctx.fillText(y===0?"Aujourd'hui":"An "+y,px(y),H-pad.bottom+16);
+    }
+
+    ctx.strokeStyle="#8dd4c4"; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(px(0),py(capitalInvesti(0)));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(capitalInvesti(y)));
+    ctx.stroke(); ctx.setLineDash([]);
+
+    var gradEtf=ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+    gradEtf.addColorStop(0,"rgba(18,176,144,0.22)");
+    gradEtf.addColorStop(1,"rgba(18,176,144,0.04)");
+    ctx.beginPath();
+    ctx.moveTo(px(0),py(pts.base[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.combined[y]));
+    ctx.lineTo(px(years),py(pts.base[years]));
+    for(var y=years;y>=0;y--) ctx.lineTo(px(y),py(pts.base[y]));
+    ctx.closePath();
+    ctx.fillStyle=gradEtf; ctx.fill();
+
+    var grad=ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+    grad.addColorStop(0,"rgba(10,110,92,0.18)"); grad.addColorStop(1,"rgba(10,110,92,0.01)");
+    ctx.beginPath();
+    ctx.moveTo(px(0),py(pts.base[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.base[y]));
+    ctx.lineTo(px(years),py(minV)); ctx.lineTo(px(0),py(minV)); ctx.closePath();
+    ctx.fillStyle=grad; ctx.fill();
+
+    ctx.strokeStyle="#12b090"; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(px(0),py(pts.combined[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.combined[y]));
+    ctx.stroke(); ctx.setLineDash([]);
+
+    ctx.strokeStyle="#0a6e5c"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(px(0),py(pts.combined[0]));
+    for(var y=1;y<=years;y++) ctx.lineTo(px(y),py(pts.combined[y]));
+    ctx.stroke();
+
+    if(hoverY>=0){
+      ctx.strokeStyle="rgba(10,110,92,0.3)"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(px(hoverY),pad.top); ctx.lineTo(px(hoverY),pad.top+ch); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(px(hoverY),py(pts.combined[hoverY]),6,0,Math.PI*2);
+      ctx.fillStyle="#0a6e5c"; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px(hoverY),py(pts.combined[hoverY]),3,0,Math.PI*2);
+      ctx.fillStyle="white"; ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(px(years),py(pts.combined[years]),5,0,Math.PI*2);
+    ctx.fillStyle="#0a6e5c"; ctx.fill();
+  }
+
+  window.update=function(){
+    var yr=parseInt(document.getElementById("slider").value);
+    document.getElementById("sliderVal").textContent=yr;
+    draw(yr);
+  };
+
+  window.addEventListener("resize",function(){ update(); });
+  update();
+})();
+</script>
+</body>
+</html>
